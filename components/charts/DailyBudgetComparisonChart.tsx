@@ -34,7 +34,7 @@ const DailyBudgetComparisonChart: React.FC<DailyBudgetComparisonChartProps> = ({
     const category = expense.category as Category;
     acc[dateKey][category] = (acc[dateKey][category] || 0) + expense.amount;
     return acc;
-  }, {} as Record<string, Record<Category, number>>);
+  }, {} as Record<string, Partial<Record<Category, number>>>);
 
   // 3. Create the data structure for the chart
   const data = dates.map(date => {
