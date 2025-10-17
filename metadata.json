@@ -1,0 +1,5 @@
+{
+  "name": "TripSavvy",
+  "description": "A modern Expense Tracker and Travel Planner app designed for groups of travelers to share trip expenses, featuring OCR receipt scanning and an AI travel assistant.",
+  "requestFramePermissions": []
+}
