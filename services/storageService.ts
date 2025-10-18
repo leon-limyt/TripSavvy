@@ -165,11 +165,15 @@ export const getTripsForUser = (userId: string): Trip[] => {
     return user.tripIds.map(id => db.trips[id]).filter(Boolean);
 };
 
-export const saveTrip = (updatedTrip: Trip): void => {
+export const saveTrip = async (updatedTrip: Trip): Promise<void> => {
+    // Simulate network delay to mimic a real API call
+    await new Promise(resolve => setTimeout(resolve, 600));
+
     const db = getDb();
     if (!db.trips[updatedTrip.id]) {
         console.error("Attempted to save a trip that does not exist:", updatedTrip.id);
-        return;
+        // In a real app, you would throw an error
+        throw new Error("Trip not found during save operation.");
     }
     db.trips[updatedTrip.id] = updatedTrip;
     saveDb(db);

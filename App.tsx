@@ -11,6 +11,7 @@ import Settings from './components/Settings';
 import { Expense, User, Trip } from './types';
 import * as storageService from './services/storageService';
 import PaperAirplaneIcon from './components/icons/PaperAirplaneIcon';
+import SyncStatus, { SyncState } from './components/SyncStatus';
 
 type View = 'dashboard' | 'expenses' | 'planner' | 'settings';
 type AuthView = 'login' | 'signup';
@@ -96,6 +97,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [syncState, setSyncState] = useState<SyncState>('idle');
 
   useEffect(() => {
     // Theme setup
@@ -113,6 +115,14 @@ const App: React.FC = () => {
         setIsLoading(false);
     }
   }, []);
+  
+  // Effect to clear sync status after a delay
+  useEffect(() => {
+    if (syncState === 'saved' || syncState === 'error') {
+      const timer = setTimeout(() => setSyncState('idle'), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [syncState]);
 
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
@@ -137,6 +147,7 @@ const App: React.FC = () => {
   
   const updateUser = async (newName: string, newAvatarUrl?: string) => {
     if (!currentUser) return;
+    setSyncState('syncing');
     try {
         const updatedUser = await storageService.updateUser(currentUser.id, newName, newAvatarUrl);
         setCurrentUser(updatedUser);
@@ -148,22 +159,44 @@ const App: React.FC = () => {
             const refreshedTrip = trips.find(t => t.id === currentTrip.id);
             setCurrentTrip(refreshedTrip || trips[0]);
         }
+        setSyncState('saved');
     } catch (error) {
         console.error("Failed to update user:", error);
+        setSyncState('error');
         throw error; // re-throw for the component to handle
     }
   };
 
   const updateTrip = (updatedTrip: Trip) => {
       if (!currentUser) return;
+      // Optimistic UI update
       setCurrentTrip(updatedTrip);
-      storageService.saveTrip(updatedTrip);
+      
+      // Fire-and-forget async save with status updates
+      (async () => {
+        setSyncState('syncing');
+        try {
+            await storageService.saveTrip(updatedTrip);
+            setSyncState('saved');
+        } catch(error) {
+            console.error("Failed to save trip:", error);
+            setSyncState('error');
+            // Here you might want to add logic to revert the optimistic update
+        }
+      })();
   };
   
   const handleInviteTraveler = async (email: string) => {
       if (!currentTrip || !currentUser) return;
-      const updatedTrip = await storageService.inviteTraveler(currentTrip.id, email, currentUser.id);
-      setCurrentTrip(updatedTrip);
+      setSyncState('syncing');
+      try {
+        const updatedTrip = await storageService.inviteTraveler(currentTrip.id, email, currentUser.id);
+        setCurrentTrip(updatedTrip);
+        setSyncState('saved');
+      } catch (error) {
+        setSyncState('error');
+        throw error; // Rethrow to allow UI to display error message
+      }
   }
   
   const addExpense = (newExpenseData: Omit<Expense, 'id'>) => {
@@ -285,6 +318,7 @@ const App: React.FC = () => {
                 <NavItem targetView="settings" icon={<SettingsIcon className="w-6 h-6"/>} label="Settings" />
              </div>
              <div className="flex items-center space-x-4">
+                <SyncStatus state={syncState} />
                 <div className="text-right hidden sm:block">
                     <p className="text-sm font-medium">Hi, {currentUser.name}</p>
                 </div>
