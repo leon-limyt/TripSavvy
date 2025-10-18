@@ -53,4 +53,6 @@ export interface Trip {
   categoryBudget?: CategoryBudget;
   startDate?: string; // ISO string YYYY-MM-DD
   endDate?: string; // ISO string YYYY-MM-DD
+  ownerId: string; // User ID (email) of the trip creator
+  pendingInvites?: string[]; // Emails of users who have been invited but haven't signed up
 }

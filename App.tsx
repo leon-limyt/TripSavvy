@@ -109,8 +109,9 @@ const App: React.FC = () => {
     const user = storageService.getCurrentUser();
     if (user) {
         handleAuthSuccess(user);
+    } else {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const handleAuthSuccess = (user: User) => {
@@ -118,11 +119,14 @@ const App: React.FC = () => {
     const trips = storageService.getTripsForUser(user.id);
     // For now, just load the first trip. A real app would have a trip selector.
     if (trips.length > 0) {
+      // sort by owner first
+      trips.sort((a,b) => (a.ownerId === user.id ? -1 : 1));
       setCurrentTrip(trips[0]);
     } else {
-      // Handle case where user has no trips (e.g., prompt to create one)
+      // This case should be rare now since signup creates a trip
       setCurrentTrip(null);
     }
+    setIsLoading(false);
   };
 
   const handleLogout = () => {
@@ -139,8 +143,10 @@ const App: React.FC = () => {
         
         // Also refresh trip data in case traveler name was updated
         const trips = storageService.getTripsForUser(updatedUser.id);
-        if (trips.length > 0) {
-            setCurrentTrip(trips[0]);
+        if (trips.length > 0 && currentTrip) {
+            // Find the currently selected trip from the refreshed list
+            const refreshedTrip = trips.find(t => t.id === currentTrip.id);
+            setCurrentTrip(refreshedTrip || trips[0]);
         }
     } catch (error) {
         console.error("Failed to update user:", error);
@@ -151,8 +157,14 @@ const App: React.FC = () => {
   const updateTrip = (updatedTrip: Trip) => {
       if (!currentUser) return;
       setCurrentTrip(updatedTrip);
-      storageService.saveTrip(currentUser.id, updatedTrip);
+      storageService.saveTrip(updatedTrip);
   };
+  
+  const handleInviteTraveler = async (email: string) => {
+      if (!currentTrip || !currentUser) return;
+      const updatedTrip = await storageService.inviteTraveler(currentTrip.id, email, currentUser.id);
+      setCurrentTrip(updatedTrip);
+  }
   
   const addExpense = (newExpenseData: Omit<Expense, 'id'>) => {
     if (!currentTrip || !currentUser) return;
@@ -200,11 +212,15 @@ const App: React.FC = () => {
 
 
   const renderView = () => {
-    if (!currentTrip || !currentUser) return <div className="text-center p-8 text-gray-500 dark:text-gray-400">Loading trip data or create your first trip...</div>;
+    if (!currentTrip || !currentUser) return (
+        <div className="text-center p-8 text-gray-500 dark:text-gray-400">
+            {currentUser ? 'Loading trip data or create your first trip...' : 'Please log in.'}
+        </div>
+    );
 
     switch (view) {
       case 'dashboard':
-        return <Dashboard trip={currentTrip} updateTrip={updateTrip} />;
+        return <Dashboard trip={currentTrip} currentUser={currentUser} updateTrip={updateTrip} handleInviteTraveler={handleInviteTraveler} />;
       case 'expenses':
         return <Expenses 
                     expenses={currentTrip.expenses} 
@@ -219,7 +235,7 @@ const App: React.FC = () => {
       case 'settings':
         return <Settings currentUser={currentUser} currentTrip={currentTrip} updateUser={updateUser} updateTrip={updateTrip} />;
       default:
-        return <Dashboard trip={currentTrip} updateTrip={updateTrip} />;
+        return <Dashboard trip={currentTrip} currentUser={currentUser} updateTrip={updateTrip} handleInviteTraveler={handleInviteTraveler} />;
     }
   };
   

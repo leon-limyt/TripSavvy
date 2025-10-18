@@ -1,9 +1,7 @@
-<!-- ...existing code... -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- FIX: corrected charset value -->
-    <meta charset="UTF-8" />
+    <meta charset="UTF--8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TripSavvy</title>
@@ -20,14 +18,23 @@
         }
       }
     </script>
-
-    <!-- Removed importmap + Babel standalone to let Vite handle module loading -->
-  </head>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.22.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1"
+  }
+}
+</script>
+<!-- Add Babel Standalone for in-browser TSX transpilation -->
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+</head>
   <body class="bg-gray-50 dark:bg-gray-900">
     <div id="root"></div>
-
-    <!-- Use Vite/browser ESM loader to fetch /index.tsx (Vite dev server will transform it) -->
-    <script type="module" src="/index.tsx"></script>
+    <!-- Update script type to text/babel to be processed by Babel Standalone -->
+    <script type="text/babel" data-presets="react,typescript" src="/index.tsx"></script>
   </body>
 </html>
-<!-- ...existing code... -->

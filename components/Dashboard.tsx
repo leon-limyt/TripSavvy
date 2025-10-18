@@ -1,7 +1,7 @@
 
 
 import React, { useState } from 'react';
-import { Expense, Traveler, Trip, Category } from '../types';
+import { Expense, Traveler, Trip, Category, User } from '../types';
 import CategoryChart from './charts/CategoryChart';
 import DailySpendChart from './charts/DailySpendChart';
 import ContributionChart from './charts/ContributionChart';
@@ -10,14 +10,63 @@ import DailyBudgetComparisonChart from './charts/DailyBudgetComparisonChart';
 
 interface DashboardProps {
   trip: Trip;
+  currentUser: User;
   updateTrip: (trip: Trip) => void;
+  handleInviteTraveler: (email: string) => Promise<void>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
-  const { expenses, travelers, destination, categoryBudget, startDate, endDate } = trip;
+const InviteForm: React.FC<{ handleInvite: (email: string) => Promise<void> }> = ({ handleInvite }) => {
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [message, setMessage] = useState({ text: '', isError: false });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!inviteEmail.trim()) return;
+        
+        setIsLoading(true);
+        setMessage({ text: '', isError: false });
+        try {
+            await handleInvite(inviteEmail);
+            setMessage({ text: 'Invitation sent!', isError: false });
+            setInviteEmail('');
+        } catch (error: any) {
+            setMessage({ text: error.message || 'Failed to send invitation.', isError: true });
+        } finally {
+            setIsLoading(false);
+            setTimeout(() => setMessage({ text: '', isError: false }), 3000);
+        }
+    };
+
+    return (
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-2">Invite a New Member</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Invited members can log in to view the trip and add their own expenses.</p>
+            <form onSubmit={handleSubmit} className="flex gap-2">
+                 <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="Enter traveler's email"
+                    required
+                    className="flex-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+                <button type="submit" disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg shadow-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-gray-400">
+                    {isLoading ? 'Sending...' : 'Invite'}
+                </button>
+            </form>
+            {message.text && <p className={`text-sm mt-2 ${message.isError ? 'text-red-500' : 'text-green-500'}`}>{message.text}</p>}
+        </div>
+    );
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ trip, currentUser, updateTrip, handleInviteTraveler }) => {
+  const { expenses, travelers, destination, categoryBudget, startDate, endDate, ownerId, pendingInvites } = trip;
   const [newTravelerName, setNewTravelerName] = useState('');
   const [isEditingDestination, setIsEditingDestination] = useState(false);
   const [destinationInput, setDestinationInput] = useState(destination);
+
+  const isOwner = currentUser.id === ownerId;
 
   // FIX: Explicitly type the accumulator in reduce to ensure totalSpending is a number.
   const totalSpending = expenses.reduce((sum: number, expense) => sum + expense.amount, 0);
@@ -52,9 +101,9 @@ const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
     if (!newTravelerName.trim()) return;
 
     const newTraveler: Traveler = {
-      id: `traveler-${Date.now()}`,
+      id: `guest-${Date.now()}`,
       name: newTravelerName.trim(),
-      avatarUrl: `https://i.pravatar.cc/150?u=${encodeURIComponent(newTravelerName.trim())}`,
+      avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(newTravelerName.trim())}`,
     };
 
     updateTrip({ ...trip, travelers: [...travelers, newTraveler] });
@@ -93,9 +142,11 @@ const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
                 ) : (
                     <div className="flex items-center gap-3">
                         <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Trip to {destination}</h2>
-                        <button onClick={() => { setDestinationInput(destination); setIsEditingDestination(true); }} className="p-1 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400">
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
-                        </button>
+                        {isOwner && (
+                            <button onClick={() => { setDestinationInput(destination); setIsEditingDestination(true); }} className="p-1 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+                            </button>
+                        )}
                     </div>
                 )}
                 <p className="text-lg text-gray-500 dark:text-gray-400 mt-1">Total Spent: <span className="font-bold text-primary-600 dark:text-primary-400">${totalSpending.toFixed(2)}</span></p>
@@ -151,7 +202,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
                     </div>
                 ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                        No budget set. You can add one in the <strong className="font-medium">Settings</strong> tab.
+                        No budget set. {isOwner ? "You can add one in the" : "The trip owner can add one in the"} <strong className="font-medium">Settings</strong> tab.
                     </p>
                 )}
             </div>
@@ -165,22 +216,40 @@ const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
                         <li key={t.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
                             <img src={t.avatarUrl} alt={t.name} className="w-8 h-8 rounded-full object-cover" />
                             <span className="font-medium text-gray-700 dark:text-gray-200">{t.name}</span>
+                            {t.id === ownerId && <span className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/50 px-2 py-0.5 rounded-full">Owner</span>}
                         </li>
                     ))}
                  </ul>
             ) : (
-                <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">No travelers added yet. Add one to start logging expenses!</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">No travelers added yet.</p>
             )}
+
+            {pendingInvites && pendingInvites.length > 0 && (
+                 <div className="mb-4">
+                    <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-2">Pending Invitations</h4>
+                    <ul className="space-y-2">
+                        {pendingInvites.map(email => (
+                            <li key={email} className="text-sm p-2 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-md">
+                                {email}
+                            </li>
+                        ))}
+                    </ul>
+                 </div>
+            )}
+           
+           <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-2">Add Guest Traveler</h4>
+           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Add a traveler who isn't using the app to track their expenses.</p>
            <form onSubmit={handleAddTraveler} className="flex gap-2">
                 <input
                     type="text"
                     value={newTravelerName}
                     onChange={(e) => setNewTravelerName(e.target.value)}
-                    placeholder="Enter traveler's name"
+                    placeholder="Enter guest's name"
                     className="flex-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                 />
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg shadow-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">Add Traveler</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg shadow-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">Add Guest</button>
             </form>
+            {isOwner && <InviteForm handleInvite={handleInviteTraveler} />}
         </div>
       </div>
 
