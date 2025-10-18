@@ -29,55 +29,53 @@ const SESSION_KEY = 'tripcost_ai_session';
 // --- AUTHENTICATION API ---
 
 export const signUp = async (name: string, email: string, password: string): Promise<User> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => { // Simulate network delay
-      const db = getDb();
-      if (db.users[email]) {
-        return reject(new Error("User with this email already exists."));
-      }
-      const defaultAvatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(name)}`;
-      db.users[email] = { password, name, avatarUrl: defaultAvatar };
-      const user: User = { id: email, name, avatarUrl: defaultAvatar };
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  const db = getDb();
+  if (db.users[email]) {
+    throw new Error("User with this email already exists.");
+  }
+  const defaultAvatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(name)}`;
+  db.users[email] = { password, name, avatarUrl: defaultAvatar };
+  const user: User = { id: email, name, avatarUrl: defaultAvatar };
 
-      // Create the user as the first traveler
-      const firstTraveler: Traveler = {
-        id: user.id, // Use email as the unique traveler ID
-        name: user.name,
-        avatarUrl: defaultAvatar,
-      };
-      
-      // Seed user with an initial empty trip with them as a traveler
-      db.trips[email] = [{
-          id: `trip${Date.now()}`,
-          destination: 'My First Trip',
-          travelers: [firstTraveler],
-          expenses: [],
-          categoryBudget: {},
-          startDate: '',
-          endDate: ''
-      }];
+  // Create the user as the first traveler
+  const firstTraveler: Traveler = {
+    id: user.id, // Use email as the unique traveler ID
+    name: user.name,
+    avatarUrl: defaultAvatar,
+  };
+  
+  // Seed user with an initial empty trip with them as a traveler
+  db.trips[email] = [{
+      id: `trip${Date.now()}`,
+      destination: 'My First Trip',
+      travelers: [firstTraveler],
+      expenses: [],
+      categoryBudget: {},
+      startDate: '',
+      endDate: ''
+  }];
 
-      saveDb(db);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-      resolve(user);
-    }, 500);
-  });
+  saveDb(db);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  return user;
 };
 
 export const logIn = async (email: string, password: string): Promise<User> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => { // Simulate network delay
-            const db = getDb();
-            const userData = db.users[email];
-            if (userData && userData.password === password) {
-                const user: User = { id: email, name: userData.name, avatarUrl: userData.avatarUrl };
-                localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-                resolve(user);
-            } else {
-                reject(new Error("Invalid email or password."));
-            }
-        }, 500);
-    });
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const db = getDb();
+    const userData = db.users[email];
+    if (userData && userData.password === password) {
+        const user: User = { id: email, name: userData.name, avatarUrl: userData.avatarUrl };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+        return user;
+    } else {
+        throw new Error("Invalid email or password.");
+    }
 };
 
 export const logOut = () => {
@@ -94,46 +92,45 @@ export const getCurrentUser = (): User | null => {
 };
 
 export const updateUser = async (userId: string, newName: string, newAvatarUrl?: string): Promise<User> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => { // Simulate network delay
-            const db = getDb();
-            if (!db.users[userId]) {
-                return reject(new Error("User not found."));
-            }
-            db.users[userId].name = newName;
-            if (newAvatarUrl) {
-                db.users[userId].avatarUrl = newAvatarUrl;
-            }
-            
-            // Also update the user's traveler name in all their trips
-            if(db.trips[userId]) {
-                db.trips[userId].forEach(trip => {
-                    const userAsTraveler = trip.travelers.find(t => t.id === userId);
-                    if (userAsTraveler) {
-                        userAsTraveler.name = newName;
-                        if (newAvatarUrl) {
-                            userAsTraveler.avatarUrl = newAvatarUrl;
-                        }
-                    }
-                });
-            }
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-            saveDb(db);
-            
-            // Update session storage
-            const user: User | null = getCurrentUser();
-            if (user && user.id === userId) {
-                user.name = newName;
-                 if (newAvatarUrl) {
-                    user.avatarUrl = newAvatarUrl;
+    const db = getDb();
+    if (!db.users[userId]) {
+        throw new Error("User not found.");
+    }
+    db.users[userId].name = newName;
+    if (newAvatarUrl) {
+        db.users[userId].avatarUrl = newAvatarUrl;
+    }
+    
+    // Also update the user's traveler name in all their trips
+    if(db.trips[userId]) {
+        db.trips[userId].forEach(trip => {
+            const userAsTraveler = trip.travelers.find(t => t.id === userId);
+            if (userAsTraveler) {
+                userAsTraveler.name = newName;
+                if (newAvatarUrl) {
+                    userAsTraveler.avatarUrl = newAvatarUrl;
                 }
-                localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-                resolve(user);
-            } else {
-                reject(new Error("Session mismatch. Please log in again."));
             }
-        }, 300);
-    });
+        });
+    }
+
+    saveDb(db);
+    
+    // Update session storage
+    const user: User | null = getCurrentUser();
+    if (user && user.id === userId) {
+        user.name = newName;
+          if (newAvatarUrl) {
+            user.avatarUrl = newAvatarUrl;
+        }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+        return user;
+    } else {
+       throw new Error("Session mismatch. Please log in again.");
+    }
 };
 
 

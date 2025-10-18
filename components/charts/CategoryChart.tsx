@@ -34,7 +34,8 @@ const CategoryChart: React.FC<CategoryChartProps> = ({ expenses }) => {
           fill="#8884d8"
           dataKey="value"
           nameKey="name"
-          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+          // FIX: Explicitly typed `percent` and `name` to resolve a TypeScript error where `percent` was inferred as a non-numeric type.
+          label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
         >
           {data.map((entry) => (
             <Cell key={`cell-${entry.name}`} fill={CATEGORY_COLORS[entry.name as Category]} />
