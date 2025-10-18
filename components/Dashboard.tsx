@@ -22,7 +22,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trip, updateTrip }) => {
   // FIX: Explicitly type the accumulator in reduce to ensure totalSpending is a number.
   const totalSpending = expenses.reduce((sum: number, expense) => sum + expense.amount, 0);
   // FIX: Explicitly typed the accumulator (`sum`) and value (`val`) in the reduce function to prevent type errors when calculating the total budget from `Object.values`.
-  const totalBudget: number = categoryBudget ? Object.values(categoryBudget).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) : 0;
+  // FIX: Changed `val: any` to `val: unknown` for better type safety. The `Number()` constructor can safely handle `unknown` types.
+  const totalBudget: number = categoryBudget ? Object.values(categoryBudget).reduce((sum: number, val: unknown) => sum + (Number(val) || 0), 0) : 0;
 
   const budgetProgress = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0;
   
